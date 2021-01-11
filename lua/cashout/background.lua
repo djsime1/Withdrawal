@@ -6,6 +6,13 @@ local tmpbg = table.Random(file.Find("backgrounds/*.*", "GAME" ))
 
 local mat = Material("../backgrounds/"..tmpbg,"nocull smooth")
 
+local grad = Material("gui/gradient", "nocull smooth")
+local r1,r2,r3,r4 = math.random(0, 359),math.random(0, 359),math.random(0, 359),math.random(0, 359)
+local fade = 1
+local bgtxt = Cashout.Settings.txt or ""
+surface.SetFont("Cashout_BGText")
+local bgtxtx, bgtxty = surface.GetTextSize(bgtxt)
+
 local Active = {
 		Ratio = mat:GetInt( "$realwidth" ) / mat:GetInt( "$realheight" ),
 		Size = 1,
@@ -55,7 +62,7 @@ end
 function DrawBackground()
 
 	if ( !IsInGame() ) then
-		draw.RoundedBox(0,0,0,ScrW(),ScrH(),Color(0,0,0))
+		--[[draw.RoundedBox(0,0,0,ScrW(),ScrH(),Color(0,0,0))
 		if ( Active ) then
 			Think( Active )
 			Render( Active )
@@ -70,7 +77,45 @@ function DrawBackground()
 				Outgoing = nil
 			end
 
+		end--]]
+
+		local w,h = ScrW(),ScrH()
+		local t = SysTime()
+
+		if !IsInGame() then
+			surface.SetDrawColor(0, 0, 0)
+			surface.DrawRect(-1, -1, w+2, h+2)
 		end
+
+		surface.SetMaterial(grad)
+
+		surface.SetAlphaMultiplier(1*fade)
+		surface.SetDrawColor(HSVToColor(t*20+r1, 1, .9))
+		surface.DrawTexturedRectRotated(w/2, h/2, w+2, h+2, 0)
+
+		surface.SetAlphaMultiplier(0.75*fade)
+		surface.SetDrawColor(HSVToColor(t*15+r2, 1, .9))
+		surface.DrawTexturedRectRotated(w/2, h/2, h+2, w+2, 90)
+
+		surface.SetAlphaMultiplier(0.50*fade)
+		surface.SetDrawColor(HSVToColor(t*10+r3, 1, .9))
+		surface.DrawTexturedRectRotated(w/2, h/2, w+2, h+2, 180)
+
+		surface.SetAlphaMultiplier(0.25*fade)
+		surface.SetDrawColor(HSVToColor(t*5+r4, 1, .9))
+		surface.DrawTexturedRectRotated(w/2, h/2, h+2, w+2, 270)
+
+		surface.SetAlphaMultiplier(1)
+
+		surface.SetTextColor(0, 0, 0, 96)
+		surface.SetFont("Cashout_BGText")
+		local x = (w/2) - (bgtxtx/2)
+		for i=1, #bgtxt do
+			surface.SetTextPos(x, (h/2) - (bgtxty/2) + (math.sin(math.rad((i*20)-(t*60)))*32))
+			surface.DrawText(bgtxt[i])
+			x = x + surface.GetTextSize(bgtxt[i])
+		end
+
 	end
 
 	--[[surface.SetMaterial( MenuGradient )
@@ -179,7 +224,7 @@ function PANEL:UpdateBackgroundImages()
 	self:ScreenshotScan( "backgrounds/" )
     local _,dir = files.Find("gamemodes/*","GAME")
     for k, v in pairs(dir) do
-        self:ScreenshotScan( "gamemodes/"..v.."/backgrounds/" )
+		self:ScreenshotScan( "gamemodes/"..v.."/backgrounds/" )
     end
 
 	ChangeBackground()

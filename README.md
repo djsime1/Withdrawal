@@ -1,3 +1,9 @@
+**NOTICE:** *This is a half-assed snapshot of my (little) progress so far with plenty of changes not working.*  
+*Mainly, this is to show off the fadebow background and extended plugin compatability. Stability not guaranteed!*
+
+# Withdrawal
+My personal fork of Cashout with some things changed/fixed, and other (useless) features added like extended plugin support.
+
 # Cashout
 A "modern" styled main menu for Garry's Mod based on the likes of CSGO, Rust and Dota 2
 

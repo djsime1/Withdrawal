@@ -8,6 +8,22 @@ function PANEL:Init()
     self:Center()
     self:MakePopup()
 
+    function self.OnClose()
+        if !(self.NeedToApply or false) then return end
+        local co = vgui.Create("DPanel")
+        function co:Paint(w, h)
+            draw.RoundedBox(8, 0, 0, w, h, Color(0,0,0,128))
+        end
+        local txt = vgui.Create("DLabel", co)
+        txt:SetText("Applying addons...")
+        txt:SetFont("Cashout_LargeText")
+        txt:SizeToContents()
+        co:SetSize(txt:GetWide() + 16, txt:GetTall() + 16)
+        txt:Center()
+        co:Center()
+        timer.Simple(0.1, function() steamworks.ApplyAddons() co:Remove() end)
+    end
+
     self.Side = vgui.Create("DPanel",self)
     self.Side:Dock(LEFT)
     self.Side:SetWide(192)
@@ -31,25 +47,33 @@ function PANEL:Init()
         draw.SimpleText("r", "Marlett", w/2, h/2, Color(255,255,255,self.alpha), 1, 1)
     end--]]
 
+    self.SearchBox = vgui.Create("DTextEntry", self.Side)
+    self.SearchBox:SetPlaceholderText("Search Addons")
+    self.SearchBox:Dock(TOP)
+    self.SearchBox:DockMargin(4,4,4,4)
+
     self.EnableAll = vgui.Create("DButton",self.Side)
     self.EnableAll:SetText("#addons.enableall")
-    self.EnableAll:SetIcon("icon16/tick.png")
+    self.EnableAll:SetIcon("icon16/lightbulb.png")
     self.EnableAll:Dock(TOP)
     self.EnableAll:SetTall(24)
     self.EnableAll:DockMargin(4,4,4,4)
     function self.EnableAll.DoClick(btn)
-        for k,v in next,engine.GetAddons() do
-            steamworks.SetShouldMountAddon(v.wsid or v.file,true)
-        end
-        steamworks.ApplyAddons()
+        Derma_Query("Are you sure you want to enable ALL addons?", "Confirm action.", "Yes", function()
+            for _,v in next,engine.GetAddons() do
+                steamworks.SetShouldMountAddon(v.wsid or v.file,true)
+            end
 
-        self.List:Clear()
-        self:RefreshWS()
+            steamworks.ApplyAddons()
+
+            self.List:Clear()
+            self:RefreshWS()
+        end, "No")
     end
 
     self.DisableAll = vgui.Create("DButton",self.Side)
     self.DisableAll:SetText("#addons.disableall")
-    self.DisableAll:SetIcon("icon16/cross.png")
+    self.DisableAll:SetIcon("icon16/lightbulb_off.png")
     self.DisableAll:Dock(TOP)
     self.DisableAll:SetTall(24)
     self.DisableAll:DockMargin(4,4,4,4)
@@ -57,7 +81,8 @@ function PANEL:Init()
         for k,v in next,engine.GetAddons() do
             steamworks.SetShouldMountAddon(v.wsid or v.file,false)
         end
-        steamworks.ApplyAddons()
+        --steamworks.ApplyAddons()
+        self:FlagApply(true)
 
         self.List:Clear()
         self:RefreshWS()
@@ -71,7 +96,102 @@ function PANEL:Init()
     self.Workshop:DockMargin(4,4,4,4)
     function self.Workshop.DoClick(btn) gui.OpenURL("http://steamcommunity.com/app/4000/workshop/") end
 
+    self.SA = vgui.Create("DButton", self.Side)
+    self.SA:SetText("Modify Selection")
+    self.SA:SetIcon("icon16/pencil.png")
+    self.SA:Dock(TOP)
+    self.SA:SetTall(24)
+    self.SA:DockMargin(4,4,4,4)
+    function self.SA.DoClick()
+        local dm = DermaMenu()
+
+        dm:AddOption("Select All/Visible", function()
+
+        end):SetIcon("icon16/add.png")
+        
+        dm:AddOption("Remove Selections", function()
+
+        end):SetIcon("icon16/delete.png")
+        
+        dm:AddOption("Invert Selections", function()
+        
+        end):SetIcon("icon16/arrow_switch.png")
+        
+        dm:AddOption("Select Enabled", function()
+        
+        end):SetIcon("icon16/lightbulb.png")
+        
+        dm:AddOption("Select Disabled", function()
+        
+        end):SetIcon("icon16/lightbulb_off.png")
+        
+        dm:Open()
+    end
+
+    self.ES = vgui.Create("DButton", self.Side)
+    self.ES:SetText("Enable Selected")
+    self.ES:SetIcon("icon16/accept.png")
+    self.ES:Dock(TOP)
+    self.ES:SetTall(24)
+    self.ES:DockMargin(4,4,4,4)
+
+    self.DS = vgui.Create("DButton", self.Side)
+    self.DS:SetText("Disable Selected")
+    self.DS:SetIcon("icon16/delete.png")
+    self.DS:Dock(TOP)
+    self.DS:SetTall(24)
+    self.DS:DockMargin(4,4,4,4)
+
+    self.US = vgui.Create("DButton", self.Side)
+    self.US:SetText("Unsubscribe Selected")
+    self.US:SetIcon("icon16/bin_empty.png")
+    self.US:Dock(TOP)
+    self.US:SetTall(24)
+    self.US:DockMargin(4,4,4,4)
+
+    --[[self.Forget = vgui.Create("DButton", self.Side)
+    self.Forget:SetText("Forget Changes")
+    self.Forget:SetIcon("icon16/cross.png")
+    self.Forget:Dock(BOTTOM)
+    self.Forget:SetTall(24)
+    self.Forget:DockMargin(4,4,4,4)
+    self.Forget:Hide()
+    function self.Forget.DoClick()
+        self:FlagApply(false)
+    end--]]
+
+    self.Apply = vgui.Create("DButton", self.Side)
+    self.Apply:SetText("Apply Changes Now")
+    self.Apply:SetIcon("icon16/tick.png")
+    self.Apply:Dock(BOTTOM)
+    self.Apply:SetTall(24)
+    self.Apply:DockMargin(4,4,4,4)
+    self.Apply:SetTooltip("Also applied when closing this window.")
+    self.Apply:Hide()
+    function self.Apply.DoClick()
+        steamworks.ApplyAddons()
+        self:FlagApply(false)
+    end
+    function self.Apply.DoRightClick() self:FlagApply(false) end
+
     self:RefreshWS()
+end
+
+function PANEL:FlagApply(flag)
+    self.NeedToApply = flag
+    self.Apply:SetVisible(flag)
+    self.Forget:SetVisible(flag)
+end
+
+function PANEL:CalcColor(mount, sel)
+    local state = tostring(mount) .. "_" .. tostring(sel)
+    local cols = {
+        true_true = Color(192,128,128),
+        true_false = Color(128,192,128),
+        false_true = Color(128,128,192),
+        false_false = Color(255,255,255),
+    }
+    return cols[state]
 end
 
 function PANEL:RefreshWS()
@@ -138,7 +258,10 @@ function PANEL:CreateAddonInfo(data)
         pnl:SetTall(128)
         pnl:Dock(TOP)
         pnl:DockMargin(0,0,4,4)
-        pnl:SetBackgroundColor(data.mounted and Color(128,192,128) or Color(255,255,255))
+        pnl:SetBackgroundColor(self:CalcColor(data.mounted, false))
+        function pnl:OnMouseReleased(key)
+            if key == MOUSE_RIGHT then pnl.cb:Toggle() end
+        end
 
         local img = vgui.Create("DImage",pnl)
         img:Dock(LEFT)
@@ -155,22 +278,28 @@ function PANEL:CreateAddonInfo(data)
         name:SetTall(32)
         name:DockMargin(2,0,0,0)
 
-        local div = vgui.Create("EditablePanel",pnl)
+        
+        local div = vgui.Create("DLabel", pnl)
         div:Dock(TOP)
         div:SetTall(64)
+        div:SetText("")
+        --div:DockMargin(4,0,0,0)
+        --div:SetFont("DermaDefault")
+        --div:SetDark(true)
 
         local mnt = vgui.Create("DButton",pnl)
         mnt:SetTall(32)
         mnt:SetWide(128)
         mnt:Dock(RIGHT)
         mnt:DockMargin(4,4,4,4)
-        mnt:SetIcon(data.mounted and "icon16/cross.png" or "icon16/tick.png")
+        mnt:SetIcon(data.mounted and "icon16/delete.png" or "icon16/accept.png")
         mnt:SetText(data.mounted and "Disable" or "Enable")
         mnt.DoClick = function(s)
             print("[Addon Mount]", data.file, not data.mounted)
             local old = steamworks.ShouldMountAddon(data.wsid)
-            steamworks.SetShouldMountAddon(data.wsid, not ata.mounted)
-            steamworks.ApplyAddons()
+            steamworks.SetShouldMountAddon(data.wsid, not data.mounted)
+            --steamworks.ApplyAddons()
+            self:FlagApply(true)
             local new = steamworks.ShouldMountAddon(data.wsid)
 
             if old == new then
@@ -179,11 +308,11 @@ function PANEL:CreateAddonInfo(data)
                 data.mounted = new
 
                 if new == true then
-                    s:SetIcon("icon16/cross.png")
+                    s:SetIcon("icon16/delete.png")
                     s:SetText("Disable")
                     pnl:SetBackgroundColor(Color(128,192,128))
                 else
-                    s:SetIcon("icon16/tick.png")
+                    s:SetIcon("icon16/accept.png")
                     s:SetText("Enable")
                     pnl:SetBackgroundColor(Color(255,255,255))
                 end
@@ -195,13 +324,22 @@ function PANEL:CreateAddonInfo(data)
         rem:SetWide(128)
         rem:Dock(RIGHT)
         rem:DockMargin(4,4,4,4)
-        rem:SetIcon("icon16/delete.png")
+        rem:SetIcon("icon16/bin_empty.png")
         rem:SetText("Unsubscribe")
         rem.DoClick = function(s)
             print("Unsubscribe",data.wsid)
             steamworks.Unsubscribe(data.wsid)
             pnl:Remove()
             self.List:PerformLayout()
+        end
+
+        local cb = vgui.Create("DCheckBox",pnl)
+        cb:Dock(RIGHT)
+        cb:DockMargin(4,8,4,8)
+        cb:SetTooltip("Right-click anywhere to toggle.")
+        pnl.cb = cb
+        function cb.OnChange(_, val)
+            pnl:SetBackgroundColor(self:CalcColor(data.mounted, val))
         end
 
         local ws = vgui.Create("DButton",pnl)
@@ -227,4 +365,5 @@ vgui.Register( "CashoutAddons", PANEL, "DFrame" )
 function CashoutAddons()
     if IsValid(_G.AddonsMenu) then _G.AddonsMenu:Remove() end
     _G.AddonsMenu = vgui.Create("CashoutAddons")
+    _G.AddonsMenu:SetDraggable(true)
 end

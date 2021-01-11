@@ -1,9 +1,9 @@
-include("background.lua")
 include("panels/mounts.lua")
 include("panels/newgame.lua")
 include("panels/addons.lua")
 include("panels/servers.lua")
 include("panels/quickjoin_edit.lua")
+include("panels/settings.lua")
 
 -- these dont get assigned globally menu state??????
 TEXT_ALIGN_LEFT = 0
@@ -38,6 +38,14 @@ surface.CreateFont("Cashout_LargeText", {
     weight = 500
 })
 
+surface.CreateFont("Cashout_BGText", {
+    font = "Coolvetica",
+    size = ScreenScaleH(96),
+    weight = 400
+})
+
+include("background.lua")
+
 local scrW, scrH = ScrW(), ScrH()
 hook.Add("Think", "Cashout.ResolutionCheck", function()
     if scrW ~= ScrW() or scrH ~= ScrH() then
@@ -58,6 +66,12 @@ hook.Add("ResolutionChanged", "Cashout.MainMenu", function()
         size = ScreenScaleH(14),
         weight = 500
     })
+
+    surface.CreateFont("Cashout_BGText", {
+    font = "Coolvetica",
+    size = ScreenScaleH(96),
+    weight = 400
+})
 end)
 
 if IsValid(_G.mainMenu) then
@@ -95,7 +109,8 @@ function mainMenu:Paint(w, h)
     local x, y = ScrW() - 2, nav:GetTall()
 
     local verString = ("Garry's Mod %s%s"):format(VERSIONSTR, BRANCH ~= "unknown" and (" [%s]"):format(BRANCH) or "")
-    local cVerString = "Cashout v" .. CASHOUT_VERSION
+    local cVerString = "Based on Cashout v" .. CASHOUT_VERSION
+    local lVerString = "Withdrawal v" .. WITHDRAWAL_VERSION
 
     surface.SetFont("BudgetLabel")
     local vW, vH = surface.GetTextSize(verString)
@@ -104,9 +119,14 @@ function mainMenu:Paint(w, h)
     surface.SetTextPos(x - vW, y)
     surface.DrawText(verString)
 
+    local lvW, lvH = surface.GetTextSize(lVerString)
+
+    surface.SetTextPos(x - lvW, y + vH)
+    surface.DrawText(lVerString)
+
     local cvW = surface.GetTextSize(cVerString)
 
-    surface.SetTextPos(x - cvW, y + vH)
+    surface.SetTextPos(x - cvW, y + vH + lvH)
     surface.DrawText(cVerString)
 end
 
@@ -119,6 +139,12 @@ function logo:Think()
     self:SetWide(ScreenScaleH(28) + gmw)
     self:SetTall(self:GetParent():GetTall())
 end
+
+--[[function logo:Paint(w, h)
+    draw.RoundedBox(4, 4, 4, ScreenScaleH(21), ScreenScaleH(21), Color(242, 111, 17))
+    draw.SimpleText("L", "Cashout_GModLogo", ScreenScaleH(21) / 2 + 4, ScreenScaleH(21) / 2 + 6, Color(255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+    draw.SimpleText("larrys's mod", "Cashout_GModLogo", ScreenScaleH(26), h / 2 + 2, Color(255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+end--]] -- Saving this for a rainy day...
 
 function logo:Paint(w, h)
     draw.RoundedBox(4, 4, 4, ScreenScaleH(21), ScreenScaleH(21), Color(18, 149, 241))
@@ -303,7 +329,19 @@ function btnAddons:Paint(w, h)
 end
 
 function btnAddons:DoClick()
-    CashoutAddons()
+    local dmenu = DermaMenu()
+
+    dmenu:AddOption("Addons", function()
+        CashoutAddons()
+    end):SetIcon("icon16/plugin.png")
+
+    dmenu:AddOption("Presets", function()
+        CashoutOpenMounts()
+    end):SetIcon("icon16/bricks.png")
+
+    dmenu:Open()
+    local x, y = self:LocalToScreen(0, self:GetTall())
+    dmenu:SetPos(x, y)
 end
 
 local btnOptions = vgui.Create("DButton", nav)
@@ -339,10 +377,113 @@ function btnOptions:DoClick()
         CashoutOpenMounts()
     end):SetIcon("icon16/controller.png")
 
+    dmenu:AddOption("Withdrawal Options", function()
+        CashoutOpenSettings()
+    end):SetIcon("icon16/wand.png")
+
     dmenu:Open()
     local x, y = self:LocalToScreen(0, self:GetTall())
     dmenu:SetPos(x, y)
 end
+
+----
+
+local btnPlugins = vgui.Create("DButton", nav)
+btnPlugins:Dock(LEFT)
+btnPlugins:SetWide(ScreenScaleH(85))
+btnPlugins:SetText("")
+btnPlugins.alpha = 128
+
+function btnPlugins:Think()
+    if self:GetWide() ~= ScreenScaleH(85) then
+        self:SetWide(ScreenScaleH(85))
+        self:SetTall(self:GetParent():GetTall())
+    end
+    if table.IsEmpty(Cashout.Plugins) and table.IsEmpty(menup.options.getTable()) then
+        self:SetVisible(false)
+    else
+        self:SetVisible(true)
+    end
+end
+
+function btnPlugins:Paint(w, h)
+    self.alpha = Lerp(FrameTime() * 4, self.alpha, self.Hovered and 128 or 0)
+    draw.RoundedBox(0, 0, 0, w, h, Color(244, 67, 54, self.alpha))
+    draw.SimpleText("Plugins", "Cashout_LargeText", w / 2, h / 2, Color(255, 255, 255, self.alpha + 127), 1, 1)
+    surface.SetDrawColor(Color(255, 255, 255, self.alpha + 127))
+    surface.DrawLine(0, 0, 0, h)
+    surface.DrawLine(w - 1, 0, w - 1, h)
+end
+
+function btnPlugins:DoClick()
+    local dmenu = DermaMenu()
+
+    for k, v in SortedPairs(Cashout.Plugins) do
+        if v ~= "cmd" then continue end
+        local opt = dmenu:AddOption(k)
+        opt:SetIcon("icon16/application_xp_terminal.png")
+        opt:SetTooltip("Right-click to run w/o parameters.")
+        function opt:DoClick()
+            Derma_StringRequest("Command parameters", k, "", function(txt) RunGameUICommand("engine " .. k .. " " .. txt) end)
+        end
+        function opt:DoRightClick()
+            dmenu:Remove()
+            RunConsoleCommand(k)
+        end
+    end
+
+    dmenu:AddSpacer()
+
+    for k, v in SortedPairs(Cashout.Plugins) do
+        if v ~= "cvar" then continue end
+        local opt = dmenu:AddOption(k)
+        opt:SetIcon("icon16/pencil.png")
+        local cvar = GetConVar(k)
+        local cv = cvar:GetString()
+        function opt:DoClick()
+            Derma_StringRequest("Set convar", k .. " = " .. cv, cv, function(txt) cvar:SetString(txt) end)
+        end
+    end
+
+    dmenu:AddSpacer()
+
+    for k, v in SortedPairs(menup.options.getTable()) do
+        local dm, dmopt = dmenu:AddSubMenu(k)
+        dmopt:SetIcon("icon16/cog.png")
+        for x, _ in SortedPairs(v) do
+            local opt = dm:AddOption(x)
+            local cv = menup.options.getOption(k, x)
+            opt:SetTooltip("Right-click to toggle between true/false")
+            if cv == "true" then
+                opt:SetIcon("icon16/tick.png")
+            elseif cv == "false" then
+                opt:SetIcon("icon16/cross.png")
+            else
+                opt:SetIcon("icon16/pencil.png")
+            end
+            function opt:DoClick()
+                Derma_StringRequest("Set value", k .. "." .. x .. " = " .. cv, cv, function(val) menup.options.setOption(k, x, val) end)
+            end
+            function opt:DoRightClick()
+                if cv == "true" then
+                    menup.options.setOption(k, x, "false")
+                    opt:SetIcon("icon16/cross.png")
+                    cv = "false"
+                else
+                    menup.options.setOption(k, x, "true")
+                    opt:SetIcon("icon16/tick.png")
+                    cv = "true"
+                end
+            end
+        end
+    end
+
+    dmenu:Open()
+    local x, y = self:LocalToScreen(0, self:GetTall())
+    dmenu:SetPos(x, y)
+end
+
+----
 
 local exit = vgui.Create("DButton", nav)
 exit:Dock(RIGHT)
@@ -364,7 +505,16 @@ function exit:Paint(w, h)
 end
 
 function exit:DoClick()
-    RunGameUICommand("quitnoconfirm")
+    local dmenu = DermaMenu()
+
+    dmenu:AddOption("Confirm", function()
+        RunGameUICommand("quitnoconfirm")
+    end):SetIcon("icon16/cancel.png")
+
+    dmenu:Open()
+    local _, y = self:LocalToScreen(0, self:GetTall())
+    local x = ScrW() - dmenu:GetWide()
+    dmenu:SetPos(x, y)
 end
 
 local btnDisconenct = vgui.Create("DButton", nav)
@@ -501,7 +651,8 @@ function loadinglog:Paint(w, h)
 
     if table.Count(lines) > 0 then
         for k, v in pairs(lines) do
-            draw.SimpleText(v, "BudgetLabel", 2, 2 + ((k - 1) * th), HSVToColor(((k * 10) + CurTime() * 50) % 360, 0.375, 1))
+            --draw.SimpleText(v, "BudgetLabel", 2, 2 + ((k - 1) * th), HSVToColor(((k * 10) + CurTime() * 50) % 360, 0.375, 1))
+            draw.SimpleText(v, "BudgetLabel", 2, 2 + ((k - 1) * th), COLOR_WHITE)
         end
     end
 

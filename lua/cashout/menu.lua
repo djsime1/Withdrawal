@@ -1,4 +1,5 @@
 _G.CASHOUT_VERSION = "1.0.4"
+_G.WITHDRAWAL_VERSION = "0.2.0"
 _G.Cashout = {}
 
 -- Menu Functionality and Requirements
@@ -20,7 +21,8 @@ include("cashout/favorites.lua")
 
 include("cashout/plugins.lua")
 
-print("Loaded Cashout v" .. CASHOUT_VERSION)
+print("Loaded Withdrawal v" .. WITHDRAWAL_VERSION)
+print("Base Cashout v" .. CASHOUT_VERSION)
 concommand.Add("menu_reload", function()
     include("includes/menu.lua")
     hook.Run("MenuStart")
